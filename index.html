@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>渓流から深海へ｜トンボとウミガメのメタバース</title>
+<title>渓流から深海へ｜トンボ・ウミガメ・サケのめぐり</title>
 <style>
 :root{--paper:#e6f4f6;--aqua:#7fe3e0;--gold:#ffe6a6;--line:rgba(150,210,220,.22)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -112,7 +112,7 @@ body.hideui{cursor:none}
     <div id="depth">すいしん 0 m</div>
     <div id="bar"><div id="fill"></div><div id="dot"></div></div>
     <div class="ends"><span>渓流</span><span>汽水</span><span>サンゴ礁</span><span>深海</span></div>
-    <div id="found">であった生きもの　0 / 33</div>
+    <div id="found">であった生きもの　0 / 41</div>
   </div>
   <div id="toast"></div>
   <div id="pad"><div id="knob"></div></div>
@@ -133,13 +133,15 @@ body.hideui{cursor:none}
 <div id="intro">
   <div class="kicker">U M I ／ M E T A V E R S E</div>
   <h1>水をゆく</h1>
-  <div class="yomi">と ん ぼ か ら 、 う み が め へ</div>
+  <div class="yomi">と ん ぼ 、 う み が め 、 そ し て さ け</div>
   <p>はじまりは 山あいの渓流。トンボになって、三つの滝を下ります。<br>
      海水と川の水がまじる干潟で、ウミガメに変身。<br>
      サンゴ礁をぬけ、ジンベエザメの泳ぐ外洋へ。<br>
-     いちばん底には、地球の熱にたよって生きるものたちがいます。</p>
-  <div class="meta">全長 約1,650m ／ 滝3つ ／ 最大すいしん 約220m ／ 生きもの33種<br>
-     さわらずに置いておくと、ひとりで旅をつづけます<br>いちばん深いところまで行くと、来た道をもどります</div>
+     いちばん底には、地球の熱にたよって生きるものたちがいます。<br>
+     折り返してサンゴ礁まで来たら、こんどはサケ。仲間とともに川をのぼり、<br>
+     ふるさとの瀬で卵を産んで力つきると、またトンボの旅がはじまります。</p>
+  <div class="meta">全長 約1,650m ／ 滝3つ ／ 最大すいしん 約220m ／ 生きもの41種<br>
+     さわらずに置いておくと、ひとりで旅をつづけます<br>いちばん深いところで折り返し、サケになって川をのぼります</div>
   <button id="enter">トンボになる</button>
   <div class="hint">左の丸を押した方向へ泳ぐ ／ ▲▼で浮き沈み ／ 画面をなぞると視点<br>
   PC：WASD・矢印／Space・Shiftで上下／ドラッグで視点／F 全画面・H UI消す・O オート<br>
@@ -223,7 +225,7 @@ function riverFloor(u,z){
   let y=riverBase(z)+ledgeDev(u,z);
   if(d<=0){
     const r=au/w;
-    y+=-0.62*(1-r*r)+nz(u*3,z*3)*0.03+nz3(u,z)*0.014;
+    y+=-1.62*(1-r*r)+nz(u*3,z*3)*0.03+nz3(u,z)*0.014;
     for(let i=0;i<FALLS.length;i++){
       const q=(z-(FALLS[i].z-7))/5.5;
       y-=1.7*Math.exp(-q*q)*(1-r*r);
@@ -249,6 +251,8 @@ function estFloor(u,z){
   if(d<=0){
     const r=au/w;
     y+=-1.7*(1-r*r)*(0.55+0.45*sstep(80,50,z));
+    /* 川と海のさかいめ：澪筋がふかい淵になる（大きな体でも通れる） */
+    y+=-2.6*(1-r*r)*sstep(90,74,z)*sstep(36,52,z);
   }else{
     /* 干潟・砂州 */
     y+=Math.min(d*0.05,0.5)
@@ -258,6 +262,11 @@ function estFloor(u,z){
   y+=nz(u*1.6,z*1.6)*0.07;
   return y;
 }
+/* 河口から沖へ抜ける澪筋（浅い砂地に水路をとおす） */
+function mouthChan(x,z){
+  const u=Math.abs(x-cx(z));
+  return -2.9*Math.max(0,1-Math.pow(u/16,2))*sstep(52,44,z)*sstep(-8,16,z);
+}
 function seaFloor(x,z){
   const u=x-cx(z),au=Math.abs(u);
   let y=baseY(z)+nz(x,z)*amp(z)+nz2(x,z)*amp(z)*1.6;
@@ -265,6 +274,7 @@ function seaFloor(x,z){
   if(reef>0.01)y+=reef*(Math.sin(u*0.18)*Math.cos(z*0.14)*2.2+Math.sin(u*0.42+z*0.31)*0.9);
   const d=au-corW(z);
   if(d>0)y+=Math.pow(Math.min(d,70)/70,1.35)*wallH(z);
+  y+=mouthChan(x,z);
   return y;
 }
 function floorY(x,z){
@@ -274,6 +284,12 @@ function floorY(x,z){
   if(z>=50)return estFloor(u,z);
   if(z>=34)return lerp(seaFloor(x,z),estFloor(u,z),sstep(34,50,z));
   return seaFloor(x,z);
+}
+/* 水面の高さ：海は0、渓流は川面、河口はなめらかにつなぐ */
+function waterY(z){
+  if(z<=74)return 0;
+  if(z>=98)return riverY(z);
+  return lerp(0,riverY(z),sstep(74,98,z));
 }
 function zoneOf(z){
   if(z>300)return['源流の渓','K E I R Y U'];
@@ -1153,14 +1169,16 @@ const wUni={
     sheet.renderOrder=5;scene.add(sheet);
     /* 落ち口の岩 */
     for(let i=-2;i<=2;i++){
-      const x=xf+i*(w*0.24),z=zf+3.6;
-      const rs=1.1+Math.random();
+      if(i===0)continue;                       /* まんなかは あけておく（サケの通り道） */
+      const side=(i<0)?-1:1, j=Math.abs(i)-1;
+      const x=xf+side*(rw(zf)*0.92+j*1.5),z=zf+3.6;
+      const rs=0.9+Math.random()*0.8;
       const r=new THREE.Mesh(new THREE.IcosahedronGeometry(1,0),FL(0x8a8878));
       r.position.set(x,floorY(x,z)+0.3,z);
       r.scale.set(rs,0.5,0.9);
       r.rotation.set(Math.random(),Math.random()*3,Math.random());
       scene.add(r);
-      addCollider(x,z,rs*0.95,r.position.y-0.6,r.position.y+0.9);
+      addCollider(x,z,rs*0.8,r.position.y-0.6,r.position.y+0.9);
     }
     /* しぶき */
     const M=240,mp=new Float32Array(M*3),ms=[];
@@ -1185,18 +1203,31 @@ const wUni={
 
   /* --- 沢の石・木・ススキ --- */
   const d=new THREE.Object3D(),cc=new THREE.Color();
-  const rock=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,0),FL(0x8e8f86),520);
-  for(let i=0;i<520;i++){
+  const ROCK_N=430;
+  const rock=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,0),FL(0x8e8f86),ROCK_N);
+  let rkN=0;
+  for(let i=0;i<ROCK_N;i++){
     const z=RZS+Math.random()*(RZE-RZS);
     const w=rw(z);
-    const x=cx(z)+(Math.random()-0.5)*w*3.0;
-    const sc=0.25+Math.random()*1.4;
+    const x=cx(z)+(Math.random()-0.5)*w*3.6;
+    const u=x-cx(z),inCh=Math.abs(u)<w*0.98;   /* 流路のなか？ */
+    let sc=0.25+Math.random()*1.4;
+    if(inCh){
+      if(Math.random()<0.45)continue;          /* 流路の石は間引く */
+      sc=Math.min(sc,0.2+Math.random()*0.42);  /* 残すのは小石だけ */
+    }
     d.position.set(x,floorY(x,z)+sc*0.28,z);
     d.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3);
-    d.scale.set(sc,sc*0.55,sc*1.15);d.updateMatrix();rock.setMatrixAt(i,d.matrix);
-    cc.setHex(0x8e8f86).offsetHSL(0,0,(Math.random()-0.5)*0.22);rock.setColorAt(i,cc);
-    if(sc>0.85)addCollider(x,z,sc*0.78,d.position.y-sc*0.5,d.position.y+sc*0.9);
+    d.scale.set(sc,sc*0.55,sc*1.15);d.updateMatrix();rock.setMatrixAt(rkN,d.matrix);
+    cc.setHex(0x8e8f86).offsetHSL(0,0,(Math.random()-0.5)*0.22);rock.setColorAt(rkN,cc);
+    rkN++;
+    /* 当たり判定は流路の外の大きな岩だけ。しかも水面より下までに とどめる */
+    if(sc>0.85&&!inCh){
+      const top=Math.min(d.position.y+sc*0.9,Math.max(floorY(x,z)+0.35,riverY(z)-0.3));
+      addCollider(x,z,sc*0.78,d.position.y-sc*0.5,Math.max(top,d.position.y-sc*0.5+0.2));
+    }
   }
+  rock.count=rkN;
   if(rock.instanceColor)rock.instanceColor.needsUpdate=true;
   scene.add(rock);
   const cedar=mergeParts([
@@ -2740,6 +2771,135 @@ const vent=(function(){
 })();
 
 /* ================= ずかん（POI） ================= */
+
+/* ================= うみたまご（豊後水道）の魚たち ================= */
+function makeFish(G,sc){
+  const g=new THREE.Group();
+  const b=new THREE.Mesh(G.b,VC());
+  const tl=new THREE.Mesh(G.t,VC());
+  tl.position.z=G.pz;
+  g.add(b);g.add(tl);
+  g.scale.setScalar(sc||1);
+  return {g:g,tail:tl,beat:G.beat};
+}
+/* アカエイ：ひらたい円盤とムチのような尾 */
+function makeRay(sc){
+  const g=new THREE.Group();
+  const bg=new THREE.SphereGeometry(1,18,12);
+  sculpt(bg,function(x,y,z){
+    const t=clamp(z,-1,1);
+    const f=1-0.45*sstep(0.2,1,t)-0.3*sstep(-0.35,-1,t);
+    return [x*0.62*f,y*0.2*(1-0.4*Math.abs(t)),z*1.5];
+  });
+  g.add(new THREE.Mesh(bg,PL(0x8a6a45)));
+  const bel=new THREE.Mesh(bg.clone(),PL(0xf0e6d2));
+  bel.scale.set(0.95,0.6,0.96);bel.position.y=-0.05;g.add(bel);
+  const wings=[],wg=bladeGeo(FIN.wing,0.08);
+  for(const s of[-1,1]){
+    const w=new THREE.Group();w.position.set(s*0.42,0,0.05);g.add(w);
+    const hd=new THREE.Group();hd.rotation.y=(s>0?-0.22:Math.PI+0.22);w.add(hd);
+    const m=new THREE.Mesh(wg,PL(0x8a6a45));m.scale.set(2.3,2.0,1);m.rotation.x=-Math.PI/2;hd.add(m);
+    const mb=new THREE.Mesh(wg,PL(0xe8dcc4));mb.scale.set(2.2,1.9,1);mb.rotation.x=-Math.PI/2;mb.position.y=-0.05;hd.add(mb);
+    wings.push({g:w,s:s});
+    const e=new THREE.Mesh(new THREE.SphereGeometry(0.07,8,6),PL(0x241a10));
+    e.position.set(s*0.26,0.11,-0.95);g.add(e);
+  }
+  const tl=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.012,3.2,6),PL(0x6f5436));
+  tl.rotation.x=Math.PI/2;tl.position.set(0,0.02,2.9);g.add(tl);
+  const barb=new THREE.Mesh(new THREE.ConeGeometry(0.055,0.4,5),PL(0x30241a));
+  barb.rotation.x=-Math.PI/2;barb.position.set(0,0.05,2.2);g.add(barb);
+  g.scale.setScalar(sc||1);
+  return {g:g,wings:wings};
+}
+
+const G_ISHIDAI=fishGeo({len:0.55,r:0.16,prof:'deep',w:0.34,h:1.24,body:0xd6dad6,tail:0x2b3138,fin:0x39424a,
+  bands:[{t0:0.06,t1:0.14,c:0x2b3138},{t0:0.24,t1:0.33,c:0x2b3138},{t0:0.43,t1:0.52,c:0x2b3138},
+         {t0:0.62,t1:0.71,c:0x2b3138},{t0:0.81,t1:0.88,c:0x2b3138}],
+  d1:0.2,d1e:0.5,d2:0.5,d2e:0.78,a1:0.56,a1e:0.8,dorsalH:0.8,analH:0.7,
+  pectL:0.18,pectH:0.8,pelvL:0.13,pelvH:0.6,eyeT:0.14,eyeS:1.05,fork:0.3,tailL:0.22,tailH:0.36});
+const G_AJI=fishGeo({len:0.34,r:0.05,prof:'slim',w:0.62,h:1.2,body:0x9db4c0,tail:0x7f97a6,fin:0xc4d6de,
+  bands:[{t0:0.72,t1:0.98,c:0xc9d8de}],
+  d1:0.32,d1e:0.5,d2:0.56,d2e:0.72,a1:0.66,a1e:0.84,dorsalH:0.7,analH:0.45,
+  pectL:0.15,pectH:0.6,pelvL:0.09,pelvH:0.34,eyeT:0.13,eyeS:1.25,fork:0.66,tailL:0.24,tailH:0.3,seg:8,nseg:7});
+const G_BURI=fishGeo({len:1.15,r:0.14,prof:'torp',w:0.66,h:1.12,body:0x44749a,tail:0x2f5c80,fin:0x5b8aab,
+  bands:[{t0:0.42,t1:0.5,c:0xd2bb52}],
+  d1:0.34,d1e:0.5,d2:0.56,d2e:0.8,a1:0.66,a1e:0.86,dorsalH:0.6,analH:0.42,
+  pectL:0.16,pectH:0.6,pelvL:0.1,pelvH:0.36,eyeT:0.12,fork:0.68,tailL:0.26,tailH:0.34,seg:10,nseg:9});
+const G_NAPO=fishGeo({len:1.5,r:0.34,prof:'deep',w:0.44,h:1.16,body:0x2f7f78,tail:0x246b66,fin:0x35908a,
+  bands:[{t0:0.1,t1:0.2,c:0x3f9a8e}],
+  d1:0.24,d1e:0.54,d2:0.54,d2e:0.82,a1:0.58,a1e:0.84,dorsalH:0.62,analH:0.55,
+  pectL:0.2,pectH:0.9,pelvL:0.12,pelvH:0.5,eyeT:0.16,eyeS:0.9,fork:0.12,tailL:0.2,tailH:0.42});
+const G_KUE=fishGeo({len:1.25,r:0.24,prof:'round',w:0.62,h:1.1,body:0x6d5d47,tail:0x4c4032,fin:0x554736,
+  bands:[{t0:0.2,t1:0.28,c:0x4a3f31},{t0:0.44,t1:0.52,c:0x4a3f31},{t0:0.66,t1:0.74,c:0x4a3f31}],
+  d1:0.26,d1e:0.52,d2:0.52,d2e:0.8,a1:0.62,a1e:0.82,dorsalH:0.62,analH:0.5,
+  pectL:0.22,pectH:0.8,pelvL:0.14,pelvH:0.55,eyeT:0.13,eyeS:1.1,fork:0.08,tailL:0.2,tailH:0.4});
+const G_TORAFU=fishGeo({len:2.4,r:0.2,prof:'slim',w:0.78,h:1.06,body:0xc9b78d,tail:0xb0a077,fin:0xbdab82,
+  bands:[{t0:0.16,t1:0.22,c:0x8b7850},{t0:0.32,t1:0.38,c:0x8b7850},{t0:0.48,t1:0.54,c:0x8b7850},
+         {t0:0.64,t1:0.7,c:0x8b7850}],
+  d1:0.36,d1e:0.52,d2:0.6,d2e:0.72,a1:0.68,a1e:0.8,dorsalH:0.72,analH:0.34,
+  pectL:0.2,pectH:0.7,pelvL:0.1,pelvH:0.3,eyeT:0.1,eyeS:0.8,
+  fork:0.12,tailL:0.6,tailH:0.26,upLobe:2.1,dnLobe:0.3,seg:10,nseg:9});
+const G_SHIROWANI=fishGeo({len:3.1,r:0.3,prof:'torp',w:0.8,h:1.04,body:0x8f949b,tail:0x787d85,fin:0x82878f,
+  bands:[{t0:0.62,t1:0.72,c:0x9aa0a6}],
+  d1:0.4,d1e:0.56,d2:0.62,d2e:0.74,a1:0.7,a1e:0.82,dorsalH:0.66,analH:0.34,
+  pectL:0.24,pectH:0.8,pelvL:0.12,pelvH:0.34,eyeT:0.09,eyeS:0.7,mouth:0xd8d2c4,
+  fork:0.6,tailL:0.42,tailH:0.3,upLobe:1.6,dnLobe:0.62,seg:12,nseg:10});
+
+/* 置き場所（海底にすむものは底にあわせる） */
+const UZ={ishi:8,ray:-26,aji:-88,napo:-150,torafu:-206,kue:-244,buri:-336,shiro:-470};
+const UX={ishi:cx(8)+8,ray:cx(-26)-7,aji:cx(-88)+6,napo:cx(-150)-6,
+          torafu:cx(-206)+9,kue:cx(-244)-8,buri:cx(-336)+10,shiro:cx(-470)-8};
+const UY={ishi:floorY(UX.ishi,UZ.ishi)+1.8,ray:floorY(UX.ray,UZ.ray)+0.8,aji:-9,napo:-10.5,
+          torafu:floorY(UX.torafu,UZ.torafu)+1.4,kue:floorY(UX.kue,UZ.kue)+1.8,buri:-27,shiro:-48};
+
+const EXTRAS=[];
+function addExtra(o,x,y,z,opt){
+  scene.add(o.g);
+  o.g.position.set(x,y,z);
+  const E=Object.assign({o:o,x:x,y:y,z:z,r:6,rz:1,ry:1,sp:0.1,ph:Math.random()*6.28,
+    beat:o.beat||6,clr:0.7},opt||{});
+  EXTRAS.push(E);
+  return E;
+}
+const ishidai=makeFish(G_ISHIDAI,1.0);
+addExtra(ishidai,UX.ishi,UY.ishi,UZ.ishi,{r:4.5,ry:0.8,sp:0.19,beat:7.5,clr:0.9});
+const akaei=makeRay(0.62);
+addExtra(akaei,UX.ray,UY.ray,UZ.ray,{r:5.5,ry:0.5,sp:0.1,clr:0.7,flap:1});
+const napoleon=makeFish(G_NAPO,1.0);
+addExtra(napoleon,UX.napo,UY.napo,UZ.napo,{r:7.5,ry:1.4,sp:0.11,beat:3.6,clr:1.6});
+const torafu=makeFish(G_TORAFU,1.0);
+addExtra(torafu,UX.torafu,UY.torafu,UZ.torafu,{r:3.6,ry:0.5,sp:0.055,beat:2.2,clr:1.2});
+const kue=makeFish(G_KUE,1.0);
+addExtra(kue,UX.kue,UY.kue,UZ.kue,{r:3.2,ry:0.7,sp:0.07,beat:3.2,clr:1.5});
+const shirowani=makeFish(G_SHIROWANI,1.0);
+addExtra(shirowani,UX.shiro,UY.shiro,UZ.shiro,{r:16,rz:1.3,ry:3.2,sp:0.055,beat:2.0,clr:3});
+function updateExtras(t,dt){
+  for(let i=0;i<EXTRAS.length;i++){
+    const E=EXTRAS[i],g=E.o.g;
+    if(Math.abs(E.z-P.z)>420){g.visible=false;continue;}
+    g.visible=true;
+    const a=t*E.sp*6.28+E.ph;
+    const x=E.x+Math.cos(a)*E.r,z=E.z+Math.sin(a)*E.r*E.rz;
+    let y=E.y+Math.sin(a*1.3+1)*E.ry;
+    y=Math.max(y,floorY(x,z)+E.clr);
+    const px=g.position.x,pz=g.position.z,py=g.position.y;
+    g.position.set(x,y,z);
+    const vx=x-px,vz=z-pz;
+    if(vx*vx+vz*vz>1e-7){
+      const yaw=Math.atan2(-vx,-vz);
+      let d=yaw-g.rotation.y;while(d>Math.PI)d-=6.283;while(d<-Math.PI)d+=6.283;
+      g.rotation.y+=d*Math.min(1,dt*3);
+      g.rotation.x=-Math.atan2(y-py,Math.max(Math.hypot(vx,vz),1e-4))*0.5;
+    }
+    g.rotation.z=Math.sin(t*0.6+E.ph)*0.07;
+    if(E.o.tail)E.o.tail.rotation.y=Math.sin(t*E.beat+E.ph)*0.4;
+    if(E.o.wings)for(const w of E.o.wings)w.g.rotation.z=Math.sin(t*1.4+E.ph)*0.42*w.s;
+  }
+}
+/* アジとブリのむれ */
+makeSchool({geo:G_AJI,n:16,spread:3.4,home:{x:UX.aji,y:UY.aji,z:UZ.aji},r:7,rz:1.1,ry:1.6,sp:0.17,ph:1.1});
+makeSchool({geo:G_BURI,n:9,spread:7.5,home:{x:UX.buri,y:UY.buri,z:UZ.buri},r:13,rz:1.2,ry:2.6,sp:0.12,ph:2.7});
+
 const CREATURES=[
   {n:'01',t:'カワセミ',k:'か わ せ み',s:'15〜17 cm',z:380,x:cx(380)+rw(380)*0.75,y:0,r:11,cd:5,
    d:'「とぶ宝石」とよばれる青い鳥。枝や岩からじっと水を見て、まっすぐ飛びこんで小魚をとる。'},
@@ -2761,51 +2921,67 @@ const CREATURES=[
    d:'オスだけ かた方のハサミが体より大きい。そのハサミをふって、しおを招くように メスをよぶ。'},
   {n:'10',t:'ヤドカリ',k:'や ど か り',s:'2〜4 cm',z:30,x:cx(30)+5,y:-2.4,r:12,cd:5,
    d:'まきがいのカラを、じぶんの家にしている。体が大きくなると、ぴったりの新しいカラをさがして引っこす。'},
-  {n:'11',t:'クマノミ',k:'く ま の み',s:'8〜12 cm',z:-15,x:cx(-15)+6,y:-6.6,r:13,cd:6,
+  {n:'11',t:'イシダイ',k:'い し だ い',s:'30〜50 cm',z:UZ.ishi,x:UX.ishi,y:UY.ishi,r:13,cd:6,mo:ishidai,
+   d:'黒と白のしまもよう。かたい歯で貝やウニをかみくだく。年をとったオスは口のまわりが黒くなり「クチグロ」とよばれる。'},
+  {n:'12',t:'クマノミ',k:'く ま の み',s:'8〜12 cm',z:-15,x:cx(-15)+6,y:-6.6,r:13,cd:6,
    d:'イソギンチャクの毒のうでの中でくらす。ぬるぬるした膜があるので、クマノミだけは刺されない。'},
-  {n:'12',t:'タツノオトシゴ',k:'た つ の お と し ご',s:'8〜15 cm',z:-44,x:cx(-44),y:0,r:12,cd:4,
+  {n:'13',t:'アカエイ',k:'あ か え い',s:'はば 40〜100 cm',z:UZ.ray,x:UX.ray,y:UY.ray,r:15,cd:8,mo:akaei,
+   d:'砂にもぐって目だけ出している。はばたくように泳ぎ、しっぽのとげには毒があるのでふまないように。'},
+  {n:'14',t:'タツノオトシゴ',k:'た つ の お と し ご',s:'8〜15 cm',z:-44,x:cx(-44),y:0,r:12,cd:4,
    d:'頭が馬に にた魚。しっぽで海草にまきついて休む。赤ちゃんは、おなかの袋でオスが育てて産む。'},
-  {n:'13',t:'ナンヨウハギ',k:'な ん よ う は ぎ',s:'20〜30 cm',z:-60,x:cx(-60)-5,y:-8,r:15,cd:8,
+  {n:'15',t:'ナンヨウハギ',k:'な ん よ う は ぎ',s:'20〜30 cm',z:-60,x:cx(-60)-5,y:-8,r:15,cd:8,
    d:'あざやかな青に、黒いもよう。しっぽは黄色。おどろくと、サンゴのすきまにすばやくかくれる。'},
-  {n:'14',t:'チョウチョウウオ',k:'ち ょ う ち ょ う う お',s:'12〜20 cm',z:-110,x:cx(-110)+4,y:-9,r:16,cd:9,
+  {n:'16',t:'マアジのむれ',k:'ま あ じ',s:'20〜30 cm',z:UZ.aji,x:UX.aji,y:UY.aji,r:20,cd:12,
+   d:'体のよこに「ぜいご」というかたいうろこが並ぶ。豊後水道の速い潮で育ったものは「関アジ」とよばれる。'},
+  {n:'17',t:'チョウチョウウオ',k:'ち ょ う ち ょ う う お',s:'12〜20 cm',z:-110,x:cx(-110)+4,y:-9,r:16,cd:9,
    d:'目のところに黒い線がある。うしろの黒い点をにせの目に見せて、てきをまどわせている。'},
-  {n:'15',t:'ウツボ',k:'う つ ぼ',s:'80〜100 cm',z:-130,x:cx(-130)-4,y:0,r:15,cd:7,
+  {n:'18',t:'ウツボ',k:'う つ ぼ',s:'80〜100 cm',z:-130,x:cx(-130)-4,y:0,r:15,cd:7,
    d:'岩あなから顔だけ出して待ちぶせる。口をあけたり閉じたりしているのは、こわいのではなく のどで水を送って息をしているから。'},
-  {n:'16',t:'アオウミガメ',k:'あ お う み が め',s:'80〜120 cm',z:-158,x:cx(-158),y:-8,r:20,cd:11,
+  {n:'19',t:'ナポレオンフィッシュ',k:'め が ね も ち の う お',s:'1〜2 m',z:UZ.napo,x:UX.napo,y:UY.napo,r:22,cd:12,mo:napoleon,
+   d:'大人になると頭に大きなコブができる。人になれやすく、ダイバーのそばまで寄ってくる。'},
+  {n:'20',t:'アオウミガメ',k:'あ お う み が め',s:'80〜120 cm',z:-158,x:cx(-158),y:-8,r:20,cd:11,
    d:'きみと同じなかま。海草やもをたべる。息つぎのために、ときどき海面まで上がってくる。'},
-  {n:'17',t:'オニイトマキエイ（マンタ）',k:'ま ん た',s:'はば 3〜5 m',z:-232,x:cx(-232),y:-26,r:36,cd:19,
+  {n:'21',t:'トラフザメ',k:'と ら ふ ざ め',s:'2〜2.5 m',z:UZ.torafu,x:UX.torafu,y:UY.torafu,r:26,cd:14,mo:torafu,
+   d:'子どものころはトラのようなしまもよう。大人になると点々にかわる。昼間は砂の上でじっと休んでいる。'},
+  {n:'22',t:'オニイトマキエイ（マンタ）',k:'ま ん た',s:'はば 3〜5 m',z:-232,x:cx(-232),y:-26,r:36,cd:19,
    d:'つばさのようなヒレで、はばたくように泳ぐ。口を大きくあけて、小さなプランクトンをこしとって食べる。'},
-  {n:'18',t:'コウイカ',k:'こ う い か',s:'20〜40 cm',z:-270,x:cx(-270)+8,y:-22,r:22,cd:9,
+  {n:'23',t:'クエ',k:'く え',s:'60〜120 cm',z:UZ.kue,x:UX.kue,y:UY.kue,r:20,cd:10,mo:kue,
+   d:'岩あなにひそむ大きな根魚。じっと待って、近づいた魚を大きな口で一のみにする。'},
+  {n:'24',t:'コウイカ',k:'こ う い か',s:'20〜40 cm',z:-270,x:cx(-270)+8,y:-22,r:22,cd:9,
    d:'体の色をすばやく変えて、まわりにまぎれたり、あいずを送ったりする。背中にある白い「甲」で うきしずみを調節する。'},
-  {n:'19',t:'ジンベエザメ',k:'じ ん べ え ざ め',s:'10〜12 m',z:-306,x:cx(-306),y:-30,r:52,cd:32,
+  {n:'25',t:'ジンベエザメ',k:'じ ん べ え ざ め',s:'10〜12 m',z:-306,x:cx(-306),y:-30,r:52,cd:32,
    d:'世界でいちばん大きな魚。サメだけど歯はほとんど使わず、水ごとプランクトンをのみこむ。せなかの白い点は、一頭ずつもようがちがう。'},
-  {n:'20',t:'ハンドウイルカ',k:'は ん ど う い る か',s:'2〜3.5 m',z:-382,x:cx(-382),y:-5,r:32,cd:20,
+  {n:'26',t:'ブリのむれ',k:'ぶ り',s:'60〜100 cm',z:UZ.buri,x:UX.buri,y:UY.buri,r:30,cd:20,
+   d:'大きくなるにつれて名前がかわる出世魚。ワカシ→イナダ→ワラサ→ブリ。潮の速い海をむれで泳ぎまわる。'},
+  {n:'27',t:'ハンドウイルカ',k:'は ん ど う い る か',s:'2〜3.5 m',z:-382,x:cx(-382),y:-5,r:32,cd:20,
    d:'魚ではなく、赤ちゃんをうむほにゅうるい。音を出して、はねかえりで まわりのようすを見ている。'},
-  {n:'21',t:'トビウオ',k:'と び う お',s:'25〜35 cm',z:-420,x:cx(-420),y:-2,r:28,cd:14,
+  {n:'28',t:'トビウオ',k:'と び う お',s:'25〜35 cm',z:-420,x:cx(-420),y:-2,r:28,cd:14,
    d:'てきに追われると水面をとび出し、大きな胸びれを広げて 400m も すべるように飛ぶ。'},
-  {n:'22',t:'マイワシのむれ',k:'ま い わ し',s:'15〜20 cm',z:-452,x:cx(-452)-6,y:-34,r:36,cd:26,
+  {n:'29',t:'マイワシのむれ',k:'ま い わ し',s:'15〜20 cm',z:-452,x:cx(-452)-6,y:-34,r:36,cd:26,
    d:'何万びきもが一つのかたまりになって泳ぐ。大きな生きものに見せて、身をまもっている。'},
-  {n:'23',t:'ミズクラゲ',k:'み ず く ら げ',s:'かさ 15〜30 cm',z:-528,x:cx(-528),y:-40,r:34,cd:13,
+  {n:'30',t:'シロワニ',k:'し ろ わ に',s:'2.5〜3 m',z:UZ.shiro,x:UX.shiro,y:UY.shiro,r:34,cd:20,mo:shirowani,
+   d:'牙がむき出しでこわい顔だが、おとなしいサメ。海面で息をすって胃に空気をため、水の中で止まったまま浮かぶ。'},
+  {n:'31',t:'ミズクラゲ',k:'み ず く ら げ',s:'かさ 15〜30 cm',z:-528,x:cx(-528),y:-40,r:34,cd:13,
    d:'体のほとんどが水。かさをすぼめてゆっくり進む。四つのわっかは、赤ちゃんを育てるふくろ。'},
-  {n:'24',t:'チョウチンアンコウ',k:'ち ょ う ち ん あ ん こ う',s:'40〜60 cm',z:-650,x:cx(-650)+4,y:-132,r:36,cd:10,
+  {n:'32',t:'チョウチンアンコウ',k:'ち ょ う ち ん あ ん こ う',s:'40〜60 cm',z:-650,x:cx(-650)+4,y:-132,r:36,cd:10,
    d:'頭の上のちょうちんは、ひかる細きんが住んでいるから光る。よってきた魚を、大きな口で一のみにする。'},
-  {n:'25',t:'ダイオウイカ',k:'だ い お う い か',s:'8〜13 m',z:-700,x:cx(-700)-6,y:-158,r:42,cd:24,
+  {n:'33',t:'ダイオウイカ',k:'だ い お う い か',s:'8〜13 m',z:-700,x:cx(-700)-6,y:-158,r:42,cd:24,
    d:'長い2本のうでで えものをつかまえる、世界でいちばん長いイカ。目はバスケットボールくらい大きく、くらい海のわずかな光も見のがさない。'},
-  {n:'26',t:'リュウグウノツカイ',k:'り ゅ う ぐ う の つ か い',s:'3〜8 m',z:-742,x:cx(-742)-8,y:-152,r:42,cd:24,
+  {n:'34',t:'リュウグウノツカイ',k:'り ゅ う ぐ う の つ か い',s:'3〜8 m',z:-742,x:cx(-742)-8,y:-152,r:42,cd:24,
    d:'銀色のリボンのような深海魚。赤いヒレをゆらして、体をたてにしたまま泳ぐことがある。'},
-  {n:'27',t:'ミツクリザメ',k:'み つ く り ざ め',s:'3〜4 m',z:-760,x:cx(-760)+10,y:-176,r:36,cd:16,
+  {n:'35',t:'ミツクリザメ',k:'み つ く り ざ め',s:'3〜4 m',z:-760,x:cx(-760)+10,y:-176,r:36,cd:16,
    d:'長い鼻の下から、あごをゴムのように前へつき出してえものを捕らえる深海のサメ。「ゴブリンシャーク」ともよばれる。'},
-  {n:'28',t:'ラブカ',k:'ら ぶ か',s:'1.5〜2 m',z:-790,x:cx(-790)+8,y:-186,r:34,cd:15,
+  {n:'36',t:'ラブカ',k:'ら ぶ か',s:'1.5〜2 m',z:-790,x:cx(-790)+8,y:-186,r:34,cd:15,
    d:'ウナギのような体のサメ。口には とがった歯が300本ならぶ。大むかしのサメに姿がにていて「生きた化石」とよばれる。'},
-  {n:'29',t:'メンダコ',k:'め ん だ こ',s:'10〜20 cm',z:-822,x:cx(-822)+6,y:-181,r:34,cd:8,
+  {n:'37',t:'メンダコ',k:'め ん だ こ',s:'10〜20 cm',z:-822,x:cx(-822)+6,y:-181,r:34,cd:8,
    d:'耳のようなヒレをぱたぱたさせて泳ぐ、まるいタコ。すみをはく袋を持っていない。'},
-  {n:'30',t:'ユメナマコ',k:'ゆ め な ま こ',s:'15〜25 cm',z:-860,x:cx(-860)-9,y:-194,r:32,cd:8,
+  {n:'38',t:'ユメナマコ',k:'ゆ め な ま こ',s:'15〜25 cm',z:-860,x:cx(-860)-9,y:-194,r:32,cd:8,
    d:'すきとおったピンク色のナマコ。海の底をはうだけでなく、ひらひらしたヒレで泳いでにげる。'},
-  {n:'31',t:'ダイオウグソクムシ',k:'だ い お う ぐ そ く む し',s:'20〜40 cm',z:-900,x:cx(-900)+3,y:-203,r:32,cd:7,
+  {n:'39',t:'ダイオウグソクムシ',k:'だ い お う ぐ そ く む し',s:'20〜40 cm',z:-900,x:cx(-900)+3,y:-203,r:32,cd:7,
    d:'ダンゴムシの大きななかま。上から落ちてくる生きもののなきがらを食べる。何年も食べなくても生きられる。'},
-  {n:'32',t:'オオグチボヤ',k:'お お ぐ ち ぼ や',s:'10〜20 cm',z:-940,x:cx(-940),y:-208,r:32,cd:8,
+  {n:'40',t:'オオグチボヤ',k:'お お ぐ ち ぼ や',s:'10〜20 cm',z:-940,x:cx(-940),y:-208,r:32,cd:8,
    d:'岩にくっついて、大きな口をあけたまま じっと待つ。小さな生きものが入ると、口をとじてつかまえる。'},
-  {n:'33',t:'ハオリムシと熱水噴出孔',k:'は お り む し',s:'1〜2 m',z:-960,x:cx(-960),y:0,r:36,cd:18,
+  {n:'41',t:'ハオリムシと熱水噴出孔',k:'は お り む し',s:'1〜2 m',z:-960,x:cx(-960),y:0,r:36,cd:18,
    d:'太陽の光がとどかない海の底で、地球の熱でわく水にたよって生きる。口も おなかも持たず、体の中の細きんが作る養分で育つ。'}
 ];
 const TOTAL=CREATURES.length;
@@ -2820,9 +2996,9 @@ mudskippers[0].z=58;mudskippers[0].x=cx(58)+estW(58)+1.6;
 fiddlers[0].z=50;fiddlers[0].x=cx(50)+estW(50)+1.6;
 CR('08').x=mudskippers[0].x;CR('08').y=floorY(mudskippers[0].x,mudskippers[0].z)+0.3;CR('08').z=mudskippers[0].z;
 CR('09').x=fiddlers[0].x;CR('09').y=floorY(fiddlers[0].x,fiddlers[0].z)+0.3;CR('09').z=fiddlers[0].z;
-CR('12').x=seahorses[0].x;CR('12').y=seahorses[0].y;CR('12').z=seahorses[0].z;
-CR('15').y=moray.g.position.y;
-CR('33').y=vent.fy+7;
+CR('14').x=seahorses[0].x;CR('14').y=seahorses[0].y;CR('14').z=seahorses[0].z;
+CR('18').y=moray.g.position.y;
+CR('41').y=vent.fy+7;
 const found={};
 let foundN=0;
 
@@ -2932,13 +3108,158 @@ const flash=new THREE.Mesh(new THREE.SphereGeometry(1,18,12),
     blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
 flash.visible=false;scene.add(flash);
 let flashT=0;
+
+/* ================= サケ（帰り道のすがた） ================= */
+const G_SALMON=fishGeo({len:1.05,r:0.135,prof:'torp',w:0.6,h:1.22,
+  body:0x7a4a55,tail:0x53303a,fin:0x5d3540,
+  bands:[{t0:0.14,t1:0.3,c:0x4e6b58},{t0:0.46,t1:0.62,c:0xa8433c}],
+  d1:0.34,d1e:0.52,twoDorsal:true,d2:0.68,d2e:0.75,a1:0.66,a1e:0.82,
+  dorsalH:0.92,analH:0.6,pectL:0.2,pectH:0.72,pelvL:0.12,pelvH:0.5,
+  eyeT:0.13,eyeS:1.05,fork:0.34,tailL:0.3,tailH:0.34,seg:12,nseg:10});
+function makeSalmon(sc){
+  const g=new THREE.Group();
+  const b=new THREE.Mesh(G_SALMON.b,VC());
+  const tl=new THREE.Mesh(G_SALMON.t,VC());
+  tl.position.z=G_SALMON.pz;
+  g.add(b);g.add(tl);
+  g.scale.setScalar(sc||1);
+  return {g:g,tail:tl};
+}
+const meSal=makeSalmon(1.15);scene.add(meSal.g);meSal.g.visible=false;
+
+/* のぼる仲間（群れ） */
+const SAL_MAX=20;
+const salB=new THREE.InstancedMesh(G_SALMON.b,VC(),SAL_MAX);
+const salT=new THREE.InstancedMesh(G_SALMON.t,VC(),SAL_MAX);
+(function(){
+  const cc=new THREE.Color();
+  for(let i=0;i<SAL_MAX;i++){
+    cc.setRGB(1,1,1).offsetHSL(0,0,(Math.random()-0.5)*0.16);
+    salB.setColorAt(i,cc);salT.setColorAt(i,cc);
+  }
+  if(salB.instanceColor)salB.instanceColor.needsUpdate=true;
+  if(salT.instanceColor)salT.instanceColor.needsUpdate=true;
+})();
+salB.count=0;salT.count=0;salB.frustumCulled=false;salT.frustumCulled=false;
+scene.add(salB);scene.add(salT);
+const buddies=[];
+function addBuddies(n,msg){
+  const before=buddies.length;
+  for(let i=0;i<n&&buddies.length<SAL_MAX;i++){
+    const k=buddies.length,sg=(k%2)?1:-1;
+    buddies.push({x:P.x,y:P.y,z:P.z,head:P.head,sink:0,
+      ox:sg*(1.2+Math.random()*2.6),oy:(Math.random()-0.5)*1.4,oz:1.6+Math.random()*8,
+      ph:Math.random()*6.28,sc:0.85+Math.random()*0.35,spd:0.85+Math.random()*0.35});
+  }
+  salB.count=salT.count=buddies.length;
+  if(msg&&buddies.length>before)toast(msg+'<br>なかま '+buddies.length+' ひき');
+}
+function clearBuddies(){buddies.length=0;salB.count=salT.count=0;}
+
+/* たまご（川底にのこる） */
+const EGG_MAX=64;
+const eggMesh=new THREE.InstancedMesh(new THREE.SphereGeometry(0.09,8,6),
+  new THREE.MeshLambertMaterial({color:0xffab6b,emissive:0x4a1c00}),EGG_MAX);
+eggMesh.count=0;eggMesh.frustumCulled=false;scene.add(eggMesh);
+let eggN=0;
+function dropEgg(){
+  if(eggN>=EGG_MAX)return;
+  const z=P.z-3+Math.random()*11;
+  const x=cx(z)+(Math.random()-0.5)*rw(z)*1.05;
+  dummy.position.set(x,floorY(x,z)+0.07,z);
+  dummy.rotation.set(0,Math.random()*6.28,0);
+  dummy.scale.setScalar(0.8+Math.random()*0.5);
+  dummy.updateMatrix();
+  eggMesh.setMatrixAt(eggN,dummy.matrix);
+  eggN++;eggMesh.count=eggN;eggMesh.instanceMatrix.needsUpdate=true;
+  if(Math.random()<0.45)ping(900+Math.random()*520,0.5,'sine',0.02);
+}
+
+/* いのちのめぐり：くだり（トンボ→ウミガメ）→ のぼり（サケ）→ 産卵 → トンボ */
+let leg='down',ritual=0,ritualStage=0,ritualT=0,leapT=0,salStage=0,jamT=0;
 function morph(to){
   if(form===to)return;
   form=to;
   flash.position.set(P.x,P.y,P.z);flashT=1;
-  toast(to==='turtle'?'ウミガメになった':'トンボになった');
+  toast(to==='turtle'?'ウミガメになった':
+       (to==='salmon'?'サケになった<br>ふるさとの川へ のぼる':'トンボになった'));
   ping(760,1.1,'sine',0.05);
   setTimeout(function(){ping(1240,1.5,'sine',0.04);},150);
+  if(to==='salmon'){
+    salStage=0;clearBuddies();addBuddies(6);
+    autoU=snapU();autoDir=-1;autoStall=0;   /* 寄り道のない帰り道へ */
+  }
+}
+function legBack(){
+  if(leg==='back')return;
+  leg='back';
+  toast('いちばん深いところ<br>ここから 帰り道');
+}
+function startRitual(){
+  if(ritual)return;
+  ritual=1;ritualStage=0;ritualT=0;
+  toast('ふるさとの瀬に ついた<br>たまごを うむ');
+  ping(520,2.0,'sine',0.05);
+}
+function endRitual(){
+  ritual=0;ritualStage=0;ritualT=0;
+  clearBuddies();
+  leg='down';salStage=0;leapT=0;
+  P.x=cx(452);P.z=452;P.y=riverY(452)+2.4;P.vx=P.vy=P.vz=0;P.bank=0;P.pitch=0;
+  autoU=0;autoDir=1;autoTurn=3;
+  morph('dfly');
+  setTimeout(function(){toast('たまごは 川底で 冬をこす<br>やごから トンボへ　旅は また はじまる');},1500);
+}
+function resetCycle(){
+  ritual=0;ritualStage=0;ritualT=0;leg='down';salStage=0;leapT=0;jamT=0;clearBuddies();
+}
+function updateCycle(t,dt){
+  if(leapT>0)leapT-=dt;
+  if(ritual){
+    ritualT+=dt;
+    if(ritualStage===0){
+      if(Math.random()<dt*16)dropEgg();
+      if(ritualT>3.4){ritualStage=1;toast('ちからを つかいはたし<br>川へ かえっていく');ping(190,2.6,'sine',0.05);}
+    }else if(ritualStage===1&&ritualT>7.8){endRitual();}
+  }
+  if(!buddies.length)return;
+  const sh=Math.sin(P.head),ch=Math.cos(P.head);
+  const dying=(ritual&&ritualStage>=1);
+  for(let i=0;i<buddies.length;i++){
+    const b=buddies[i];
+    const tx=P.x-ch*b.ox+sh*b.oz+Math.sin(t*0.9+b.ph)*0.6;
+    const tz=P.z+sh*b.ox+ch*b.oz+Math.cos(t*0.8+b.ph)*0.6;
+    const ty=P.y+b.oy+Math.sin(t*1.2+b.ph*1.7)*0.25;
+    const px=b.x,pz=b.z,k=Math.min(1,dt*2.0);
+    b.x+=(tx-b.x)*k;b.z+=(tz-b.z)*k;b.y+=(ty-b.y)*Math.min(1,dt*1.6);
+    if(dying){b.sink+=dt*0.5;b.y-=dt*0.7;}
+    /* 岸に乗り上げない：川では流路のなかへ収める */
+    if(b.z>92){
+      const c2=cx(b.z),w2=rw(b.z)*0.7;
+      b.x=clamp(b.x,c2-w2,c2+w2);
+    }
+    const cb=resolveColliders(b.x,b.z,b.y,0.35);
+    b.x=cb.x;b.z=cb.z;
+    const gy2=floorY(b.x,b.z),ws2=waterY(b.z);
+    const lo2=gy2+((b.z>92)?0.5:0.3);
+    b.y=clamp(b.y,lo2,Math.max(lo2+0.06,ws2-0.22)+(leapT>0?1.4:0));   /* 滝では仲間も跳ねる */
+    const vx=b.x-px,vz=b.z-pz;
+    if(vx*vx+vz*vz>1e-5){
+      const h=Math.atan2(-vx,-vz);
+      let d=h-b.head;while(d>Math.PI)d-=6.283;while(d<-Math.PI)d+=6.283;
+      b.head+=d*Math.min(1,dt*3);
+    }
+    const beat=Math.sin(t*7.6*b.spd+b.ph)*(dying?0.2:1);
+    dummy.position.set(b.x,b.y,b.z);
+    dummy.rotation.set(0,b.head,clamp(b.sink*1.3,0,1.5)+beat*0.05);
+    dummy.scale.setScalar(b.sc*Math.max(0.06,1-b.sink*0.55));
+    dummy.updateMatrix();
+    salB.setMatrixAt(i,dummy.matrix);
+    mB.makeRotationY(beat*0.5);mB.setPosition(0,0,G_SALMON.pz);
+    mA.multiplyMatrices(dummy.matrix,mB);
+    salT.setMatrixAt(i,mA);
+  }
+  salB.instanceMatrix.needsUpdate=true;salT.instanceMatrix.needsUpdate=true;
 }
 
 /* ================= 操作 ================= */
@@ -3025,7 +3346,16 @@ const WAY=[];
 (function(){
   function w(x,y,z){
     const c=resolveColliders(x,z,y,1.3);
-    const yy=Math.max(y,floorY(c.x,c.z)+(z>88?0.4:(z>44?0.9:4)));
+    const gf=floorY(c.x,c.z);
+    let yy;
+    if(z>88)yy=Math.max(y,gf+0.4);
+    else if(z>66)yy=Math.max(y,gf+0.9);
+    else{
+      /* 海・河口は水中を通す（水面より下、底からも離す） */
+      const lid=(z>44)?-1.2:-2.0;
+      const bot=gf+Math.min(3.5,Math.max(1.2,(lid-gf)*0.45));
+      yy=clamp(y,bot,Math.max(bot,lid));
+    }
     const last=WAY[WAY.length-1];
     if(last&&Math.abs(last.z-c.z)<0.8&&Math.abs(last.x-c.x)<0.8)return;
     WAY.push(new THREE.Vector3(c.x,yy,c.z));
@@ -3099,7 +3429,46 @@ const CSAMP=[];
     CSAMP.push({u:u,p:CURVE.getPointAt(u)});
   }
 })();
-let autoU=0,autoDir=1,autoTurn=0,autoStall=0;
+/* --- サケの帰り道：寄り道せず、流れの中央をのぼる --- */
+const BWAY=[];
+(function(){
+  for(let z=504;z>=-966;z-=9){
+    const x0=cx(z),gf=floorY(x0,z);
+    let y;
+    if(z>=98)y=gf+clamp((riverY(z)-gf)*0.55,0.45,1.3);
+    else if(z>=66)y=lerp(-1.1,riverY(98)-0.3,sstep(66,98,z));
+    else if(z>=44)y=-1.4;
+    else y=Math.min(-2.2,gf*0.4);
+    /* かならず水面の下・川底の上に */
+    const lid=waterY(z)-0.25,bot=gf+(z>=98?0.3:1.2);
+    y=Math.min(y,lid);
+    y=Math.max(y,Math.min(bot,lid));
+    /* 岩をよけつつ、流路からは出ない */
+    const c=resolveColliders(x0,z,y,0.7);
+    const lim=(z>44)?rw(z)*1.1:26;
+    BWAY.push(new THREE.Vector3(clamp(c.x,x0-lim,x0+lim),y,z));
+  }
+})();
+const BCURVE=new THREE.CatmullRomCurve3(BWAY,false,'catmullrom',0.35);
+BCURVE.arcLengthDivisions=2000;
+const BCURVE_LEN=BCURVE.getLength();
+const BSAMP=[];
+(function(){
+  for(let i=0;i<=500;i++){const u=i/500;BSAMP.push({u:u,p:BCURVE.getPointAt(u)});}
+})();
+function curveOf(){return (form==='salmon')?BCURVE:CURVE;}
+function curveLenOf(){return (form==='salmon')?BCURVE_LEN:CURVE_LEN;}
+function snapU(){
+  const SM=(form==='salmon')?BSAMP:CSAMP;
+  let bu=0,bd=1e9;
+  for(let i=0;i<SM.length;i++){
+    const q=SM[i].p;
+    const d=Math.hypot(q.x-P.x,(q.y-P.y)*0.5,q.z-P.z);
+    if(d<bd){bd=d;bu=SM[i].u;}
+  }
+  return bu;
+}
+let autoU=0,autoDir=1,autoTurn=0,autoStall=0,nearSm=0,spSm=0,framW=0;
 let wayI=0,wayT=0;
 
 
@@ -3110,14 +3479,7 @@ function setAuto(v){
   const b=document.getElementById('b-auto');
   b.classList.toggle('on',v);b.textContent=v?'AUTO':'手動';
   if(v){
-    /* いちばん近い曲線上の位置から再開 */
-    let bu=0,bd=1e9;
-    for(let i=0;i<CSAMP.length;i++){
-      const q=CSAMP[i].p;
-      const d=Math.hypot(q.x-P.x,(q.y-P.y)*0.5,q.z-P.z);
-      if(d<bd){bd=d;bu=CSAMP[i].u;}
-    }
-    autoU=bu;autoTurn=0;
+    autoU=snapU();autoTurn=0;
     toast('オートで泳ぎます');
   }
 }
@@ -3237,25 +3599,26 @@ function toast(m){
 const infoEl=document.getElementById('info');
 let curC=null;
 function creaturePos(c){
+  if(c.mo)return c.mo.g.position;
   switch(c.n){
     case '01':return kingfisher.g.position;
     case '07':return herons[0].g.position;
     case '08':return mudskippers[0].m.position;
     case '09':return fiddlers[0].g.position;
-    case '12':return seahorses[0].g.position;
-    case '17':return mantas[0].o.g.position;
-    case '18':return cuttle.g.position;
-    case '19':return whale.g.position;
-    case '20':return dolphins[0].g.position;
-    case '21':return flyfish[0].g.position;
-    case '24':return angler.g.position;
-    case '25':return squid.g.position;
-    case '26':return oarfish.g.position;
-    case '27':return goblin.g.position;
-    case '28':return frilled.g.position;
-    case '29':return menda.g.position;
-    case '30':return cukes[0].g.position;
-    case '31':return isopod.g.position;
+    case '14':return seahorses[0].g.position;
+    case '22':return mantas[0].o.g.position;
+    case '24':return cuttle.g.position;
+    case '25':return whale.g.position;
+    case '27':return dolphins[0].g.position;
+    case '28':return flyfish[0].g.position;
+    case '32':return angler.g.position;
+    case '33':return squid.g.position;
+    case '34':return oarfish.g.position;
+    case '35':return goblin.g.position;
+    case '36':return frilled.g.position;
+    case '37':return menda.g.position;
+    case '38':return cukes[0].g.position;
+    case '39':return isopod.g.position;
   }
   return {x:c.x,y:c.y,z:c.z};
 }
@@ -3313,6 +3676,7 @@ document.getElementById('b-full').onclick=function(){toggleFull();};
 document.getElementById('b-zukan').onclick=function(){document.getElementById('zukan').classList.add('show');};
 document.getElementById('zclose').onclick=function(){document.getElementById('zukan').classList.remove('show');lastInput=performance.now()/1000;};
 document.getElementById('b-reset').onclick=function(){
+  resetCycle();
   P.x=cx(452);P.z=452;P.y=riverY(452)+2.4;morph('dfly');P.vx=P.vy=P.vz=0;camYaw=Math.PI;yawOff=0;autoU=0;autoDir=1;autoTurn=0;
   toast('渓流にもどりました');
 };
@@ -3338,6 +3702,7 @@ const camPos=new THREE.Vector3(),lookAt=new THREE.Vector3(),tmp=new THREE.Vector
 const tmpC=new THREE.Color(),tmpC2=new THREE.Color();
 const fogShallow=new THREE.Color(0x2fa3bd),fogMid=new THREE.Color(0x0f5f8c),
       fogDeep=new THREE.Color(0x04263c),fogAbyss=new THREE.Color(0x020c14),fogAir=new THREE.Color(0xbfe0ea);
+const lookSm=new THREE.Vector3();let lookInit=false;
 const fillEl=document.getElementById('fill'),dotEl=document.getElementById('dot'),
       depthEl=document.getElementById('depth'),placeEl=document.getElementById('place');
 let lastZone='';
@@ -3363,47 +3728,67 @@ function animate(){
   if(keys['ShiftLeft']||keys['ShiftRight'])dU-=1;
 
   let tvx,tvy,tvz;
-  const SPD=(form==='dfly')?11.5:8.4;
-  if(started&&autoMode){
+  const CU=curveOf(),CL=curveLenOf();
+  const SPD=(form==='dfly')?11.5:(form==='salmon'?9.6:8.4);
+  if(ritual){
+    tvx=0;tvz=0;tvy=(ritualStage>=1)?-1.3:0;
+  }else if(started&&autoMode){
     /* --- オート遊泳：なめらかな一本の曲線をたどり、終点で折り返す --- */
-    let near=0;
-    for(const c of CREATURES){
+    let near=0,nearX=0,nearZ=0;
+    if(form!=='salmon')for(const c of CREATURES){    /* サケの帰り道は寄り道しない */
       const p=creaturePos(c);
       const d=Math.hypot(p.x-P.x,p.z-P.z);
-      if(d<c.r*0.9)near=Math.max(near,1-d/(c.r*0.9));
+      if(d<c.r*0.9){
+        const w2=1-d/(c.r*0.9);
+        if(w2>near){near=w2;nearX=p.x;nearZ=p.z;}
+      }
     }
+    nearSm+=(near-nearSm)*Math.min(1,dt*1.1);
+    near=nearSm;
     /* 帰り道は少し早足、立ち止まりも控えめに */
     const back=(autoDir<0)?1.4:1.0;
     const slow=(autoDir<0)?0.45:0.8;
-    const sp=(form==='dfly'?7.2:SPD)*(0.42+0.58*(1-near*slow))*back*(autoTurn>0?0.45:1);
+    const sp=(form==='dfly'?7.2:SPD)*(0.5+0.5*(1-near*slow))*back*(autoTurn>0?0.55:1);
     /* 体が曲線から離れすぎたら進行を待つ */
-    CURVE.getPointAt(autoU,tmp2);
+    CU.getPointAt(autoU,tmp2);
     const lag=Math.hypot(tmp2.x-P.x,(tmp2.y-P.y)*0.6,tmp2.z-P.z);
-    if(lag<26){autoU=clamp(autoU+autoDir*sp*dt/CURVE_LEN,0,1);autoStall=0;}
+    if(lag<26){autoU=clamp(autoU+autoDir*sp*dt/CL,0,1);autoStall=0;}
     else{
       autoStall+=dt;
-      if(autoStall>5)autoU=clamp(autoU+autoDir*sp*dt/CURVE_LEN,0,1);
+      if(autoStall>(form==='salmon'?2.2:5))autoU=clamp(autoU+autoDir*sp*dt/CL,0,1);
     }
     if(autoTurn>0)autoTurn-=dt;
     if(autoU>=1&&autoDir>0){
       autoDir=-1;autoTurn=4;
-      toast('いちばん深いところ<br>来た道を もどります');
+      legBack();
     }else if(autoU<=0&&autoDir<0){
-      autoDir=1;autoTurn=4;
-      toast('源流にもどりました<br>もういちど、海へ');
+      if(form==='salmon')startRitual();
+      else{autoDir=1;autoTurn=4;toast('源流にもどりました<br>もういちど、海へ');}
     }
     /* 少し先の点をめざす */
-    const leadD=(form==='dfly'?12:17)*(1-near*0.6);
-    const lead=clamp(autoU+autoDir*(leadD/CURVE_LEN),0,1);
-    CURVE.getPointAt(lead,tmp2);
+    const leadD=(form==='dfly'?13:19)*(1-near*0.45);
+    const lead=clamp(autoU+autoDir*(leadD/CL),0,1);
+    CU.getPointAt(lead,tmp2);
     tmp.set(tmp2.x-P.x,tmp2.y-P.y,tmp2.z-P.z);
     if(tmp.lengthSq()<1e-6)tmp.set(0,0,-autoDir);
     tmp.normalize();
-    const swayX=Math.sin(t*0.31)*0.16+Math.sin(t*0.13+1.7)*0.11;
-    const swayY=Math.sin(t*0.24+0.6)*0.12;
+    /* 出会った生きもののまわりを、ゆっくり回りこむ */
+    if(near>0.05){
+      const ox=P.x-nearX,oz=P.z-nearZ,OL=Math.max(Math.hypot(ox,oz),0.001);
+      tmp.x+=(-oz/OL)*near*0.5;tmp.z+=(ox/OL)*near*0.5;
+      tmp.normalize();
+    }
+    const swayX=Math.sin(t*0.19)*0.075+Math.sin(t*0.09+1.7)*0.05;
+    const swayY=Math.sin(t*0.16+0.6)*0.055;
     tvx=(tmp.x+swayX)*sp;
-    tvy=(tmp.y+swayY)*sp*(form==='dfly'?1.35:0.7);
-    tvz=(tmp.z+Math.cos(t*0.27)*0.13)*sp;
+    tvy=(tmp.y+swayY)*sp*(form==='dfly'?1.2:0.65);
+    tvz=(tmp.z+Math.cos(t*0.17)*0.06)*sp;
+    /* 川・河口では流れの中央にもどる */
+    if(P.z>44){
+      const uu=P.x-cx(P.z),ww=(P.z>76?rw(P.z):estW(P.z));
+      const over=Math.abs(uu)-ww*0.55;
+      if(over>0)tvx-=(uu<0?-1:1)*Math.min(over*0.9,4.0);
+    }
   }else{
     const sinY=Math.sin(camYaw),cosY=Math.cos(camYaw);
     const wx=(-sinY*(-iy)+cosY*ix),wz=(-cosY*(-iy)-sinY*ix);
@@ -3413,13 +3798,28 @@ function animate(){
     if(dU===0&&form==='turtle'&&P.y>-0.3)tvy=-1.4;   /* 海面ではゆっくり沈む */
   }
   /* 岩・木・柱を手前で避ける（ぶつかる前に操舵で回りこむ） */
-  const lookAhead=(form==='dfly')?4.5:5.5;
+  const lookAhead=(form==='dfly')?4.5:(form==='salmon'?3.8:5.5);
   const av=avoidVec(P.x+P.vx*0.35,P.z+P.vz*0.35,P.y,lookAhead,tvx,tvz);
-  const avStr=(form==='dfly')?15:12;
+  const avStr=(form==='dfly')?15:(form==='salmon'?15:12);
   tvx+=av.x*avStr;tvz+=av.z*avStr;
   stuckT=(av.x*av.x+av.z*av.z>0.02)?stuckT+dt:Math.max(0,stuckT-dt*2);
   if(stuckT>1.6){tvy+=(form==='dfly'?6:3.5);}   /* 詰まったら上へ抜ける */
+  /* サケ：滝を跳びこえる */
+  if(form==='salmon'&&!ritual){
+    for(let i=0;i<FALLS.length;i++){
+      if(Math.abs(P.z-FALLS[i].z)<8.5){
+        leapT=1.0;tvy+=7.4;
+        if(Math.random()<dt*10)emitBubble(P.x,P.y,P.z);
+      }
+    }
+  }
 
+  /* サケ：川底をこすらないよう、いつも中層へもどる */
+  if(form==='salmon'&&!ritual){
+    const g0=floorY(P.x,P.z),w0=waterY(P.z);
+    const mid=g0+clamp((w0-g0)*0.5,0.4,1.2);
+    if(P.y<mid)tvy+=(mid-P.y)*2.4;
+  }
   P.vx+=(tvx-P.vx)*Math.min(1,dt*2.4);
   P.vy+=(tvy-P.vy)*Math.min(1,dt*2.2);
   P.vz+=(tvz-P.vz)*Math.min(1,dt*2.4);
@@ -3430,26 +3830,75 @@ function animate(){
   const ccx=cx(P.z),lim=corW(P.z)+(P.z>46?5:26);
   if(P.x<ccx-lim){P.x=ccx-lim;P.vx*=0.3;}
   if(P.x>ccx+lim){P.x=ccx+lim;P.vx*=0.3;}
+  /* サケは流路のなかだけを泳ぐ（岸を走らない） */
+  if(form==='salmon'&&P.z>92){
+    const w3=rw(P.z)*0.72;
+    if(P.x<ccx-w3){P.x=ccx-w3;P.vx=Math.max(P.vx,0);}
+    if(P.x>ccx+w3){P.x=ccx+w3;P.vx=Math.min(P.vx,0);}
+  }
   /* 岩・木・柱にめり込まない：それでも触れたら押し出す（保険） */
-  const bodyR=(form==='dfly')?0.32:1.35;
+  const bodyR=(form==='dfly')?0.32:(form==='salmon'?0.42:1.35);
   const cr=resolveColliders(P.x,P.z,P.y,bodyR);
   P.x=cr.x;P.z=cr.z;
   if(cr.hit){P.vx*=0.6;P.vz*=0.6;}
   /* 地形：進行方向の周囲数点をみて、坂や段差に体がめり込まないようにする */
-  const sampleR=(form==='dfly')?0.32:1.15;
+  const sampleR=(form==='dfly')?0.32:(form==='salmon'?0.4:1.15);
   let gy=floorY(P.x,P.z);
   for(let si=0;si<4;si++){
     const sa=P.head+si*1.5708;
     gy=Math.max(gy,floorY(P.x+Math.sin(sa)*sampleR,P.z+Math.cos(sa)*sampleR));
   }
-  let fy=gy+(form==='dfly'?0.5:1.0);
-  if(form==='dfly'&&P.z>84)fy=Math.max(fy,riverY(P.z)+0.32);
+  const ws=waterY(P.z);
+  let fy,ymax;
+  if(form==='dfly'){
+    fy=Math.max(gy+0.5,ws+0.32);
+    ymax=gy+26;
+  }else{
+    /* 浅いところでは水深にあわせて体を低くする（河口でつっかえない） */
+    const room=Math.max(0.3,ws-gy);
+    fy=gy+Math.min((form==='turtle')?1.0:(form==='salmon'?0.55:0.32),room*0.45);
+    ymax=ws-((form==='turtle')?0.3:(form==='salmon'?0.22:0.14));
+    if(form==='salmon'&&leapT>0)ymax=ws+1.8;   /* 滝でだけ水面をやぶる */
+    if(ymax<fy+0.12)ymax=fy+0.12;              /* 床と水面にはさまれて止まらない */
+  }
   if(P.y<fy){P.y=fy;P.vy=Math.max(P.vy,0);}
-  const ymax=(form==='dfly')?gy+26:0.35;
   if(P.y>ymax){P.y=ymax;P.vy=Math.min(P.vy,0);}
-  /* 変身 */
-  if(form==='dfly'&&P.z<80)morph('turtle');
-  else if(form==='turtle'&&P.z>92)morph('dfly');
+  /* 変身と いのちのめぐり */
+  if(!ritual){
+    if(leg==='down'){
+      if(form==='dfly'&&P.z<70)morph('turtle');
+      else if(form==='turtle'&&P.z>86)morph('dfly');
+      if(P.z<Z_END+70)legBack();
+    }else{
+      if(form==='turtle'&&P.z>-190)morph('salmon');
+      else if(form==='salmon'){
+        if(salStage===0&&P.z>-40){salStage=1;addBuddies(3,'浅瀬で なかまが 合流した');}
+        else if(salStage===1&&P.z>46){salStage=2;addBuddies(4,'河口で 群れに なった');}
+        else if(salStage===2&&P.z>FALLS[0].z+7){salStage=3;addBuddies(2,'ひとつめの滝を こえた');}
+        else if(salStage===3&&P.z>FALLS[1].z+7){salStage=4;addBuddies(2,'ふたつめの滝を こえた');}
+        else if(salStage===4&&P.z>FALLS[2].z+7){salStage=5;addBuddies(2,'みっつめの滝を こえた');}
+        if(P.z>=444)startRitual();
+      }
+    }
+  }
+  /* 進めなくなったときは、そっと航路へ寄せて脱出する */
+  if(started&&!ritual&&Math.hypot(P.vx,P.vz)<0.8)jamT+=dt;else jamT=Math.max(0,jamT-dt*2.5);
+  if(jamT>1.1){
+    const jump=(form==='salmon');
+    /* 川では まず流れの中心へ にじり寄る */
+    if(jump&&P.z>92){
+      const k2=Math.min(1,dt*2.2);
+      P.x+=(cx(P.z)-P.x)*k2;
+      P.z+=1.6*dt;
+    }
+    if(jump){leapT=Math.max(leapT,0.6);P.y=Math.min(ws+1.5,P.y+dt*3.0);}   /* 岩を跳びこえる */
+    if(autoMode){
+      CU.getPointAt(clamp(autoU+autoDir*(9/CL),0,1),tmp2);
+      const k=Math.min(1,dt*1.8);
+      P.x+=(tmp2.x-P.x)*k;P.z+=(tmp2.z-P.z)*k;
+      if(!jump)P.y+=(clamp(tmp2.y,fy,ymax)-P.y)*k;
+    }else if(!jump)P.y=Math.min(ymax,P.y+dt*1.2);
+  }
 
   /* 向き */
   const sp2=Math.hypot(P.vx,P.vz);
@@ -3462,7 +3911,7 @@ function animate(){
   const tp=clamp(-Math.atan2(P.vy,Math.max(sp2,0.6))*0.85,-0.7,0.7);
   P.pitch+=(tp-P.pitch)*Math.min(1,dt*3);
 
-  me.g.visible=(form==='turtle');dfly.g.visible=(form==='dfly');
+  me.g.visible=(form==='turtle');dfly.g.visible=(form==='dfly');meSal.g.visible=(form==='salmon');
   const stroke=0.35+Math.min(sp2/SPD,1)*0.75;
   if(form==='turtle'){
     me.g.position.set(P.x,P.y,P.z);
@@ -3473,6 +3922,12 @@ function animate(){
       if(f.front)f.g.rotation.x=Math.sin(t*1.9+1.4)*0.16*stroke;
     }
     if(sp2>2&&Math.random()<dt*4)emitBubble(P.x,P.y+0.4,P.z);
+  }else if(form==='salmon'){
+    const roll=(ritual&&ritualStage>=1)?clamp((ritualT-3.4)*0.45,0,1.5):0;
+    meSal.g.position.set(P.x,P.y,P.z);
+    meSal.g.rotation.set(P.pitch*0.8,P.head,clamp(P.bank*1.2,-0.8,0.8)+roll);
+    meSal.tail.rotation.y=Math.sin(t*8.6)*(0.16+0.4*stroke)*(roll>0?0.12:1);
+    if(sp2>2.4&&Math.random()<dt*3)emitBubble(P.x,P.y+0.2,P.z);
   }else{
     dfly.g.position.set(P.x,P.y,P.z);
     dfly.g.rotation.set(P.pitch*0.7,P.head,clamp(P.bank*1.3,-0.9,0.9));
@@ -3490,26 +3945,32 @@ function animate(){
     flash.material.opacity=Math.max(0,flashT)*0.5;
     flash.scale.setScalar(1.2+(1-flashT)*9);
   }else flash.visible=false;
+  updateCycle(t,dt);
+  updateExtras(t,dt);
 
   /* --- カメラ --- */
   let dy=P.head-camYaw;while(dy>Math.PI)dy-=6.283;while(dy<-Math.PI)dy+=6.283;
-  camYaw+=dy*Math.min(1,dt*(sp2>0.4?1.6:0.5));
+  camYaw+=dy*Math.min(1,dt*(sp2>0.4?1.15:0.4));
   if(autoMode){
-    yawOff+=((Math.sin(t*0.083)*0.55)-yawOff)*Math.min(1,dt*0.5);
-    pitchOff+=((Math.sin(t*0.061+1.2)*0.16)-pitchOff)*Math.min(1,dt*0.5);
+    yawOff+=((Math.sin(t*0.052)*0.3)-yawOff)*Math.min(1,dt*0.35);
+    pitchOff+=((Math.sin(t*0.041+1.2)*0.085)-pitchOff)*Math.min(1,dt*0.35);
   }else{
     yawOff*=Math.max(0,1-dt*0.3);pitchOff*=Math.max(0,1-dt*0.22);
   }
   const cyw=camYaw+yawOff,cp=camPitch+pitchOff;
-  const cdist=(form==='dfly'?3.2:7.4)+Math.min(sp2*0.22,2.2);
-  const chgt=(form==='dfly'?0.95:2.3);
+  spSm+=(sp2-spSm)*Math.min(1,dt*1.2);
+  const cdist=(form==='dfly'?3.2:(form==='salmon'?4.0:7.4))+Math.min(spSm*0.22,2.2);
+  const chgt=(form==='dfly'?0.95:(form==='salmon'?1.05:2.3));
   camPos.set(P.x+Math.sin(cyw)*cdist,P.y+chgt-cp*4.2-P.pitch*2.2,P.z+Math.cos(cyw)*cdist);
   lookAt.set(P.x-Math.sin(P.head)*3.2,P.y+0.4-P.pitch*2,P.z-Math.cos(P.head)*3.2);
   /* オート時：出会った生きものを画面に収める */
+  if(!(autoMode&&curC))framW+=(0-framW)*Math.min(1,dt*0.8);
   if(autoMode&&curC){
     const F=creaturePos(curC);
     const dh=Math.hypot(F.x-P.x,F.z-P.z);
-    const fw=clamp(1-dh/(curC.r*1.05),0,1)*0.92;
+    const fwT=clamp(1-dh/(curC.r*1.05),0,1)*0.85;
+    framW+=(fwT-framW)*Math.min(1,dt*0.8);
+    const fw=framW;
     if(fw>0.01){
       const dx=P.x-F.x,dz=P.z-F.z,LL=Math.max(Math.hypot(dx,dz),0.001);
       const fd=(curC.cd||12)+Math.sin(t*0.22)*1.5;
@@ -3529,13 +3990,15 @@ function animate(){
     const sa=si*1.5708;
     cg=Math.max(cg,floorY(camPos.x+Math.sin(sa)*0.6,camPos.z+Math.cos(sa)*0.6));
   }
-  cg+=(form==='dfly'?0.5:1.1);
+  cg+=(form==='turtle'?1.1:0.5);
   if(camPos.y<cg)camPos.y=cg;
   const ccam=resolveColliders(camPos.x,camPos.z,camPos.y,0.6);
   camPos.x=ccam.x;camPos.z=ccam.z;
   if(form==='turtle'&&P.y>-1.4)camPos.y=Math.max(camPos.y,1.9);
-  camera.position.lerp(camPos,Math.min(1,dt*4.5));
-  camera.lookAt(lookAt);
+  camera.position.lerp(camPos,Math.min(1,dt*3.0));
+  if(!lookInit){lookSm.copy(lookAt);lookInit=true;}
+  lookSm.lerp(lookAt,Math.min(1,dt*2.6));
+  camera.lookAt(lookSm);
   surfUni.cam.value.copy(camera.position);
   surfUni.below.value=camera.position.y<0?1:0;
 
@@ -3930,7 +4393,7 @@ function animate(){
     if(trailT<=0&&sp2>1.2){
       trailT=0.035;
       const i=trailIdx=(trailIdx+1)%TRAIL_N;
-      const back=(form==='dfly')?0.5:1.6;
+      const back=(form==='turtle')?1.6:(form==='salmon'?0.9:0.5);
       trailPos[i*3]=P.x+Math.sin(P.head)*back+(Math.random()-0.5)*0.5;
       trailPos[i*3+1]=P.y+(Math.random()-0.5)*0.4;
       trailPos[i*3+2]=P.z+Math.cos(P.head)*back+(Math.random()-0.5)*0.5;
